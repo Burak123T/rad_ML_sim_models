@@ -203,7 +203,7 @@ if __name__ == '__main__':
             print(f"---------- ROUND {x + 1} ----------")
             inf_output = run_inference(trt_engine, prep_image)
             post_proc_results(inf_output)
-
+            x = x + 1
 
     cleanup()
 
