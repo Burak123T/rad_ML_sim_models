@@ -7,6 +7,8 @@ import os
 import pycuda.driver as cuda
 import pycuda.autoinit
 
+import time
+
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):
         self.host = host_mem
@@ -185,9 +187,12 @@ if __name__ == '__main__':
     prep_image = preprocess_data(input_image_path)
 
     for i in range(5):
+        warmup_start_time = time.time()
         print(f"---------- WARMUP {i + 1} ----------")
         inf_output = run_inference(trt_engine, prep_image)
         post_proc_results(inf_output)
+        warmup_end_time = time.time()
+        print("\033[96m" + "Time measured:" + f"\033[92m {warmup_end_time - warmup_start_time}" + "\033[0m")
     
     print("\n\n\n")
 
@@ -195,14 +200,20 @@ if __name__ == '__main__':
         num_iter = int(sys.argv[3])
         for x in range(num_iter):
             print(f"---------- ROUND {x + 1} ----------")
+            start_time = time.time()
             inf_output = run_inference(trt_engine, prep_image)
             post_proc_results(inf_output)
+            end_time = time.time()
+            print("\033[96m" + "Time measured:" + f"\033[92m {end_time - start_time}" + "\033[0m")
     except Exception as e:
         x = 0
         while True:
             print(f"---------- ROUND {x + 1} ----------")
+            start_time = time.time()
             inf_output = run_inference(trt_engine, prep_image)
             post_proc_results(inf_output)
+            end_time = time.time()
+            print("\033[96m" + "Time measured:" + f"\033[92m {end_time - start_time}" + "\033[0m")
             x = x + 1
 
     cleanup()
