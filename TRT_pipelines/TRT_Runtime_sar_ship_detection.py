@@ -35,7 +35,7 @@ def preprocess_data(image_path):
         else:
             print("\t- loaded image: {}".format(image_path))
 
-        img_convert = cv2.cvtColor(image_unproc, cv2.BGR2RGB)
+        img_convert = cv2.cvtColor(image_unproc, cv2.COLOR_BGR2RGB)
         resize_img = cv2.resize(img_convert, (256, 256))
         image = resize_img.astype(np.float32) / 255.0
         print("\t- Scaled to: 0, 1")
