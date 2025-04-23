@@ -187,7 +187,7 @@ if __name__ == '__main__':
             inf_output = run_inference(trt_engine, prep_image)
             post_proc_results(inf_output)
             end_time = time.time()
-            print("\033[96m" + "Time measured:" + f"\033[92m {end_time - start_time}" + "\033[0m")
+            print("\033[96m" + "\nTime measured:" + f"\033[92m {end_time - start_time}" + "\033[0m")
             x = x + 1
 
     cleanup()
