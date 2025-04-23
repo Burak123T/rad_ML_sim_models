@@ -20,7 +20,7 @@ print("\n" + "\033[96m" + "TensorRT version:" + "\033[0m \033[1m" + "{} \033[0m"
 
 TRT_LOGGER = tensorrt.Logger()
 RUNTIME = tensorrt.Runtime(TRT_LOGGER)
-BIN_OUTPUT_PATH = "../bin_outputs/eurosat_preprocessed_input_data.bin"
+BIN_OUTPUT_PATH = "../bin_outputs/sar_preprocessed_input_data.bin"
 context = None
 trt_engine = None
 
