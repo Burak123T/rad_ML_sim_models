@@ -9,6 +9,7 @@ import pycuda.driver as cuda
 import pycuda.autoinit
 
 import time
+import ctypes
 
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):
@@ -18,11 +19,25 @@ class HostDeviceMem(object):
 
 print("\n" + "\033[96m" + "TensorRT version:" + "\033[0m \033[1m" + "{} \033[0m".format(tensorrt.__version__))
 
+librad = ctypes.CDLL('/usr/local/lib/librad_logger.so')
+print("\n---------------------------")
+print("| Loaded librad_logger.so |")
+print("---------------------------\n")
+
 TRT_LOGGER = tensorrt.Logger()
 RUNTIME = tensorrt.Runtime(TRT_LOGGER)
 BIN_OUTPUT_PATH = "../bin_outputs/sar_preprocessed_input_data.bin"
 context = None
 trt_engine = None
+
+rad_log_start = librad.log_start
+
+# int event_id, const char *event_name, const char *event_type, const char *event_data
+arg_types = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+rad_log_start.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+
+# Hard-coded slowdown time threshold
+SLOW_THRESHOLD = 0.025
 
 def preprocess_data(image_path):
     try:
@@ -44,10 +59,17 @@ def preprocess_data(image_path):
         image.astype(np.float32).tofile(BIN_OUTPUT_PATH)
         print("\033[96m" + f"Preprocessed image saved to:" + "\033[0m \033[92m" + f"{BIN_OUTPUT_PATH}" + "\033[0m \n")
 
+        preprocess_result = rad_log_start(20, b'preprocess_data', b'inference data pre-processing', str(image).encode())
+        print("\033[94mrad_logger:\033[0m preprocessing result logged for event id -> ", preprocess_result, "\n\n\n")
+
         return image
 
     except Exception as e:
         print("\033[91m" + f"Error during preprocessing: {e} \033[0m\n")
+
+        preprocess_result = rad_log_start(11, b'preprocess_data', b'inference data pre-processing error!', str(e).encode())
+        print("\033[94mrad_logger:\033[0m preprocessing result logged for event id -> ", preprocess_result, "\n\n\n")
+
         sys.exit(1)
 
 def load_trt_engine(trt_path):
@@ -55,9 +77,17 @@ def load_trt_engine(trt_path):
         print("\033[96m" + "Provided Engine filepath:" + "\033[0m \033[1m" + "{} \033[0m".format(trt_path))
         with open(trt_path, "rb") as f:
             print("\033[96m" + "Engine: " + "\033[92m" + "loaded" + "\033[0m \n")
+
+            load_trt_engine_result = rad_log_start(30, b'load_trt_engine', b'load provided TRT engine filepath', str(trt_path).encode())
+            print("\033[94mrad_logger:\033[0m TRT engine loading result logged for event id -> ", load_trt_engine_result)
+
             return RUNTIME.deserialize_cuda_engine(f.read())
     except Exception as e:
         print("\n" + "\033[91m" + f"Error loading engine from path {trt_path}:\n {e}" + "\033[0m \n")
+        
+        load_trt_engine_result = rad_log_start(31, b'load_trt_engine', b'load provided TRT engine filepath error!', str(e).encode())
+        print("\033[94mrad_logger:\033[0m TRT engine loading result logged for event id -> ", load_trt_engine_result)
+
         exit()
 
 def run_inference(engine, prep_image):
@@ -96,9 +126,18 @@ def run_inference(engine, prep_image):
 
         stream.synchronize()
 
+        run_inference_result = rad_log_start(40, b'run_inference', b'inference run', str(outputs[0].host).encode())
+        print("\033[94mrad_logger:\033[0m run inference result logged for event id -> ", run_inference_result)
+        
+        #print("outputs[0] -> ", outputs[0])
+        #print("outputs[0].host -> ", outputs[0].host)
         return outputs[0].host
     except Exception as e:
         print("\n" + "\033[91m" + f"Error during inference stage: \n{e}" + "\033[0m \n")
+        
+        run_inference_result = rad_log_start(41, b'run_inference', b'error during inference run!', str(e).encode())
+        print("\033[94mrad_logger:\033[0m run inference result logged for event id -> ", run_inference_result)
+
         exit()
 
 def allocate_buffers(engine):
@@ -118,6 +157,10 @@ def allocate_buffers(engine):
             outputs.append(HostDeviceMem(host_mem, device_mem))
         else:
             inputs.append(HostDeviceMem(host_mem, device_mem))
+    
+    event_data = [inputs, outputs, bindings, stream]
+    allocate_buffers_result = rad_log_start(10, b'allocate_buffers', b'allocate needed buffers for provided TRT engine', str(event_data).encode())
+    print("\033[94mrad_logger:\033[0m buffer allocation result logged for event id -> ", allocate_buffers_result)
 
     return inputs, outputs, bindings, stream
 
@@ -131,8 +174,14 @@ def post_proc_results(pred_output):
             print("\033[91m" + f"Mismatch for output size: {pred_output.size} \033[0m\n")
         else:
             print("\033[96m" + f"Correct size \033[0m\n")
+            postproc_result = rad_log_start(50, b'post_proc_results', b'post-process infered results', str(x).encode())
+            print("\033[94mrad_logger:\033[0m post-processing results logged for event id -> ", postproc_result)
     except Exception as e:
         print("\033[91m" + f"Error during post-processing results:\n {e}" + "\033[0m \n")
+        
+        postproc_result = rad_log_start(51, b'post_proc_results', b'post-processsing error', str(e).encode())
+        print("\033[94mrad_logger:\033[0m post-processing results logged for event id -> ", postproc_result)
+
         exit()
 
 def cleanup():
@@ -145,6 +194,16 @@ def cleanup():
         del RUNTIME
     if TRT_LOGGER:
         del TRT_LOGGER
+    cleanup_result = rad_log_start(60, b'cleanup', b'cleanup runtime', b'none')
+    print("\033[94mrad_logger:\033[0m cleanup results logged for event id -> ", cleanup_result)
+
+# Check if inference time above threshold
+def check_slowdown(total_inf_time):
+    if total_inf_time > SLOW_THRESHOLD:
+        # log time slowdown
+        log_slow_time = rad_log_start(80, b'Inference time below threshold', b'inference slowdown', str(total_inf_time).encode())
+        print("\033[91mrad_logger:\033[0m inference slowdown logged for event id -> ", log_slow_time)
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -178,7 +237,11 @@ if __name__ == '__main__':
             inf_output = run_inference(trt_engine, prep_image)
             post_proc_results(inf_output)
             end_time = time.time()
+            total_inf_time = end_time - start_time
             print("\033[96m" + "Time measured:" + f"\033[92m {end_time - start_time}" + "\033[0m")
+
+            check_slowdown(total_inf_time)
+
     except Exception as e:
         x = 0
         while True:
@@ -189,6 +252,8 @@ if __name__ == '__main__':
             end_time = time.time()
             print("\033[96m" + "\nTime measured:" + f"\033[92m {end_time - start_time}" + "\033[0m")
             x = x + 1
+
+            check_slowdown(total_inf_time)
 
     cleanup()
 
