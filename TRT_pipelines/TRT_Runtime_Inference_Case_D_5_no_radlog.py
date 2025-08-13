@@ -32,7 +32,7 @@ trt_engine = None
 rad_log_start = librad.log_start
 
 # Hard-coded slowdown time threshold
-SLOW_THRESHOLD = 0.6
+SLOW_THRESHOLD = 0.045
 
 # int event_id, const char *event_name, const char *event_type, const char *event_data
 arg_types = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
