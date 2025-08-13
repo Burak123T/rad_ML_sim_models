@@ -137,10 +137,10 @@ def run_inference(engine, prep_image):
 
 def allocate_buffers(engine):
     inputs, outputs = [], []
-    bindings = [None] * engine.engine.num_io_tensors
+    bindings = [None] * engine.num_io_tensors
     stream = cuda.Stream()
 
-    for i in range(engine.engine.num_io_tensors):
+    for i in range(engine.num_io_tensors):
         binding = engine[i]
         size = tensorrt.volume(engine.get_tensor_shape(binding))
         shape = engine.get_tensor_shape(binding)
