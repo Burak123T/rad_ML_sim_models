@@ -37,7 +37,7 @@ arg_types = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
 rad_log_start.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
 
 # Hard-coded slowdown time threshold
-SLOW_THRESHOLD = 0.025
+SLOW_THRESHOLD = 0.04
 
 def preprocess_data(image_path):
     try:
